@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.wrangler
+
+# Archivos locales con datos institucionales o de importación; no se publican.
+importar_docentes.sql
+generar_importacion_docentes.py

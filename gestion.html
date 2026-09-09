@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CharryComunica | Colegio Charry IED</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="fixes.css?v=2">
+  <style>[hidden]{display:none!important}</style>
+</head>
+<body>
+  <section class="login" id="login">
+    <form class="login-card" id="loginForm">
+      <img src="assets/logo.png" alt="Escudo del Colegio Charry IED">
+      <p class="eyebrow">Colegio Charry IED</p>
+      <h1>CharryComunica</h1>
+      <p class="muted">Ingrese con su cuenta autorizada para gestionar la asistencia.</p>
+      <label>Correo institucional<input id="email" type="email" autocomplete="username" required></label>
+      <label>Contraseña<input id="password" type="password" autocomplete="current-password" required></label>
+      <button class="primary" type="submit">Ingresar</button>
+      <p class="mensaje" id="loginMensaje"></p>
+    </form>
+  </section>
+
+  <div class="app" id="app" hidden>
+    <aside>
+      <div class="brand"><img src="assets/logo.png" alt="Escudo del Colegio Charry IED"><div><strong>CharryComunica</strong><small>Colegio Charry IED</small></div></div>
+      <nav><button class="activo" data-view="asistencia">✓ <span>Asistencia</span></button><button data-view="estadisticas">▥ <span>Estadísticas</span></button><button data-view="estudiantes">♙ <span>Estudiantes</span></button></nav>
+      <div class="perfil"><div class="avatar" id="avatar">CC</div><div><strong id="nombrePerfil">Usuario</strong><small id="rolPerfil"></small></div></div>
+      <button class="salir" id="salir">Cerrar sesión</button>
+    </aside>
+    <main>
+      <header><div><p class="eyebrow">CharryComunica · Colegio Charry IED</p><h1 id="titulo">Control de asistencia</h1><p class="muted">Información escolar, siempre conectada</p></div><label class="fecha">Fecha <input type="date" id="fecha"></label></header>
+      <section id="asistencia" class="vista activa">
+        <div class="hero"><div><h2 id="saludo">Bienvenido</h2><p>Seleccione un curso para registrar la asistencia.</p></div><b>✓</b></div>
+        <div class="metricas" id="metricas"></div>
+        <article class="panel"><div class="panel-head"><div><h2>Listado del curso</h2><span class="pill" id="jornada"></span></div><div class="tools"><select id="curso"></select><input id="buscar" placeholder="Buscar estudiante"><button class="primary" id="guardar">Guardar asistencia</button></div></div><p class="mensaje" id="mensaje"></p><div class="tabla"><table><thead><tr><th>N.º</th><th>Estudiante</th><th>Curso</th><th>Estado</th></tr></thead><tbody id="filas"></tbody></table></div></article>
+      </section>
+      <section id="estadisticas" class="vista"><div class="metricas" id="metricasGlobales"></div><article class="panel"><h2>Resumen de la fecha seleccionada</h2><div id="resumen" class="resumen"></div></article></section>
+      <section id="estudiantes" class="vista">
+        <article class="panel">
+          <div class="panel-head">
+            <div><h2>Gestión de estudiantes</h2><p class="muted">Información organizada alfabéticamente por apellidos y nombres.</p></div>
+            <div class="tools"><select id="cursoEstudiantes"></select><input id="buscarEstudiante" placeholder="Buscar estudiante"><button class="primary" id="nuevoEstudiante">+ Añadir estudiante</button></div>
+          </div>
+          <p class="mensaje" id="mensajeEstudiantes"></p>
+          <div class="tabla"><table><thead><tr><th>N.º</th><th>Estudiante</th><th>Código</th><th>Curso</th><th>Acciones</th></tr></thead><tbody id="filasEstudiantes"></tbody></table></div>
+        </article>
+        <div class="modal" id="modalEstudiante" hidden>
+          <form class="modal-card" id="formEstudiante">
+            <div class="modal-head"><div><p class="eyebrow">CharryComunica</p><h2 id="tituloEstudiante">Añadir estudiante</h2></div><button type="button" class="cerrar" id="cerrarEstudiante" aria-label="Cerrar">×</button></div>
+            <input type="hidden" id="estudianteId">
+            <label>Nombres<input id="estudianteNombres" required></label>
+            <label>Apellidos<input id="estudianteApellidos" required></label>
+            <label>Código interno (opcional)<input id="estudianteCodigo"></label>
+            <label>Curso<select id="estudianteCurso" required></select></label>
+            <div class="modal-actions"><button type="button" class="secundario" id="cancelarEstudiante">Cancelar</button><button type="submit" class="primary" id="guardarEstudiante">Guardar</button></div>
+            <p class="mensaje" id="mensajeFormulario"></p>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="vendor/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
