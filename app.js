@@ -179,6 +179,16 @@
   }
 
   const etiquetasClasificacion={seguimiento:"Seguimiento formativo",tipo_i:"Situación Tipo I",tipo_ii:"Situación Tipo II",tipo_iii:"Situación Tipo III"};
+  const faltasTipoI={
+    lenguaje_occasional:"Uso ocasional de palabras inadecuadas, burlas, apodos o expresiones despectivas",
+    conflicto_interpersonal:"Conflicto por desacuerdos académicos, deportivos o de juego",
+    discusion_verbal:"Discusión verbal sin agresión física ni amenazas", juego_brusco:"Juego brusco sin lesiones",
+    interrupcion_clase:"Interrupción o alteración leve de la clase", dispositivo_no_autorizado:"Uso inadecuado o no autorizado de dispositivos electrónicos",
+    incumplimiento_acuerdos:"Incumplimiento ocasional de acuerdos de aula o normas de convivencia",
+    pertenencias_sin_autorizacion:"Tomar, esconder o cambiar de lugar pertenencias sin autorización",
+    molestia_esporadica:"Molestar esporádicamente a un compañero", copia_no_estructurada:"Copiar tareas o durante una evaluación, sin fraude estructurado",
+    irrespeto_momentaneo:"Manifestación momentánea de irrespeto", tardanzas_frecuentes:"Llegadas tarde frecuentes sin justificación"
+  };
   const protocolosObservador={
     seguimiento:{instancia:"aula",texto:"Registro formativo. Describa hechos verificables, acuerde acciones pedagógicas y haga seguimiento respetando la confidencialidad."},
     tipo_i:{instancia:"aula",texto:"Tipo I: atienda de inmediato en el aula, detenga el comportamiento, realice conversación restaurativa, acuerde una reparación y registre los compromisos. Informe a la familia si hay recurrencia o se requiere corresponsabilidad."},
@@ -189,10 +199,12 @@
   function actualizarProtocoloObservador(){
     const clasificacion=$("#observacionClasificacion")?.value || "seguimiento";
     const protocolo=protocolosObservador[clasificacion] || protocolosObservador.seguimiento;
-    const cuadro=$("#protocoloObservador"), remision=$("#observacionRemision"), aviso=$("#notificarAcudiente"), textoAviso=$("#avisoObservador");
+    const cuadro=$("#protocoloObservador"), remision=$("#observacionRemision"), aviso=$("#notificarAcudiente"), textoAviso=$("#avisoObservador"), campoFalta=$("#campoFaltaTipoI"), falta=$("#observacionFaltaTipoI");
     if(cuadro){ cuadro.classList.toggle("urgente",clasificacion==="tipo_iii"); cuadro.innerHTML=`<strong>${etiquetasClasificacion[clasificacion] || "Registro"}</strong>${protocolo.texto}`; }
     if(remision) remision.value=protocolo.instancia;
     const sensible=["tipo_ii","tipo_iii"].includes(clasificacion);
+    if(campoFalta) campoFalta.hidden=clasificacion!=="tipo_i";
+    if(falta){ falta.required=clasificacion==="tipo_i"; if(clasificacion!=="tipo_i") falta.value=""; }
     if(aviso){ aviso.disabled=sensible; if(sensible) aviso.checked=false; else if(!aviso.checked) aviso.checked=true; }
     if(textoAviso) textoAviso.textContent=sensible?"Por protección, la comunicación con la familia será definida por la instancia institucional responsable; no se prepara un aviso automático.":"Al guardar, el aviso queda pendiente. El envío automático se habilitará al conectar el correo institucional o WhatsApp.";
   }
@@ -204,7 +216,8 @@
     $("#filasObservador").innerHTML=lista.map(o=>{
       const estudiante=`${o.estudiantes?.apellidos||""} ${o.estudiantes?.nombres||""}`.trim() || "Estudiante";
       const extracto=(o.descripcion||"").length>105?`${o.descripcion.slice(0,105)}…`:o.descripcion||"";
-      return `<tr><td>${esc(o.fecha)}</td><td><strong>${esc(estudiante)}</strong></td><td><span class="pill">${esc(etiquetasClasificacion[o.clasificacion]||o.tipo)}</span><br><small class="muted">${esc(o.tipo)}</small></td><td><strong>${esc(o.titulo)}</strong><br><span class="muted">${esc(extracto)}</span></td><td><span class="pill">${esc(estadoNotificacion(o.estado_notificacion))}</span></td></tr>`;
+      const falta=o.falta_tipo_i?`<br><small class="muted">${esc(faltasTipoI[o.falta_tipo_i]||o.falta_tipo_i)}</small>`:"";
+      return `<tr><td>${esc(o.fecha)}</td><td><strong>${esc(estudiante)}</strong></td><td><span class="pill">${esc(etiquetasClasificacion[o.clasificacion]||o.tipo)}</span><br><small class="muted">${esc(o.tipo)}</small>${falta}</td><td><strong>${esc(o.titulo)}</strong><br><span class="muted">${esc(extracto)}</span></td><td><span class="pill">${esc(estadoNotificacion(o.estado_notificacion))}</span></td></tr>`;
     }).join("") || `<tr><td colspan="5" class="muted">Aún no hay observaciones para este curso.</td></tr>`;
   }
 
@@ -214,7 +227,7 @@
     if (!cursoId) return;
     mostrar("#mensajeObservador","Cargando observaciones…");
     const {data,error}=await db.from("observaciones")
-      .select("id,fecha,tipo,clasificacion,remision_a,titulo,descripcion,estado_notificacion,estudiante_id,estudiantes(nombres,apellidos)")
+      .select("id,fecha,tipo,clasificacion,falta_tipo_i,remision_a,titulo,descripcion,estado_notificacion,estudiante_id,estudiantes(nombres,apellidos)")
       .eq("curso_id",cursoId).order("fecha",{ascending:false}).order("created_at",{ascending:false});
     if(error) { mostrar("#mensajeObservador",`No se pudieron cargar las observaciones: ${error.message}`,true); return; }
     observaciones=data||[]; renderObservador(); mostrar("#mensajeObservador",observaciones.length?"Historial actualizado.":"No hay observaciones registradas en este curso.");
@@ -238,9 +251,12 @@
   if(formularioObservacion) formularioObservacion.onsubmit=async ev=>{
     ev.preventDefault();
     const cursoId=$("#cursoObservador").value;
+    const clasificacion=$("#observacionClasificacion").value;
+    const faltaTipoI=clasificacion==="tipo_i" ? $("#observacionFaltaTipoI").value : null;
+    if(clasificacion==="tipo_i" && !faltaTipoI) return mostrar("#mensajeFormularioObservacion","Seleccione la falta o situación Tipo I antes de guardar.",true);
     const datos={
       estudiante_id:$("#observacionEstudiante").value, curso_id:cursoId, registrado_por:perfil.id,
-      fecha:$("#fecha").value, tipo:$("#observacionTipo").value, clasificacion:$("#observacionClasificacion").value, remision_a:$("#observacionRemision").value,
+      fecha:$("#fecha").value, tipo:$("#observacionTipo").value, clasificacion, falta_tipo_i:faltaTipoI, remision_a:$("#observacionRemision").value,
       titulo:$("#observacionTitulo").value.trim(), descripcion:$("#observacionDescripcion").value.trim(),
       acciones_acordadas:$("#observacionAcciones").value.trim()||null,
       notificar_acudiente:$("#notificarAcudiente").checked
@@ -256,6 +272,7 @@
   if($("#cancelarObservacion")) $("#cancelarObservacion").onclick=cerrarObservacion;
   if($("#buscarObservacion")) $("#buscarObservacion").oninput=renderObservador;
   if($("#observacionClasificacion")) $("#observacionClasificacion").onchange=actualizarProtocoloObservador;
+  if($("#observacionFaltaTipoI")) $("#observacionFaltaTipoI").onchange=()=>{ const titulo=$("#observacionTitulo"), texto=faltasTipoI[$("#observacionFaltaTipoI").value]; if(titulo && texto && !titulo.value.trim()) titulo.value=texto; };
   if($("#cursoObservador")) $("#cursoObservador").onchange=async()=>{ $("#curso").value=$("#cursoObservador").value; await cargarEstudiantes(); await cargarObservador(); };
 
   if($("#nuevoEstudiante")) $("#nuevoEstudiante").onclick=()=>abrirEstudiante(); if($("#cerrarEstudiante")) $("#cerrarEstudiante").onclick=cerrarEstudiante; if($("#cancelarEstudiante")) $("#cancelarEstudiante").onclick=cerrarEstudiante; if($("#buscarEstudiante")) $("#buscarEstudiante").oninput=renderEstudiantes;
