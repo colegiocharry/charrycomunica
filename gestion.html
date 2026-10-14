@@ -25,7 +25,7 @@
   <div class="app" id="app" hidden>
     <aside>
       <div class="brand"><img src="assets/logo.png" alt="Escudo del Colegio Charry IED"><div><strong>CharryComunica</strong><small>Colegio Charry IED</small></div></div>
-      <nav><button class="activo" data-view="asistencia">✓ <span>Asistencia</span></button><button data-view="estadisticas">▥ <span>Estadísticas</span></button><button data-view="estudiantes">♙ <span>Estudiantes</span></button></nav>
+      <nav><button class="activo" data-view="asistencia">✓ <span>Asistencia</span></button><button data-view="estadisticas">▥ <span>Estadísticas</span></button><button data-view="estudiantes">♙ <span>Estudiantes</span></button><button data-view="observador">▤ <span>Observador</span></button></nav>
       <div class="perfil"><div class="avatar" id="avatar">CC</div><div><strong id="nombrePerfil">Usuario</strong><small id="rolPerfil"></small></div></div>
       <button class="salir" id="salir">Cerrar sesión</button>
     </aside>
@@ -56,6 +56,30 @@
             <label>Curso<select id="estudianteCurso" required></select></label>
             <div class="modal-actions"><button type="button" class="secundario" id="cancelarEstudiante">Cancelar</button><button type="submit" class="primary" id="guardarEstudiante">Guardar</button></div>
             <p class="mensaje" id="mensajeFormulario"></p>
+          </form>
+        </div>
+      </section>
+      <section id="observador" class="vista">
+        <article class="panel">
+          <div class="panel-head">
+            <div><h2>Observador del estudiante</h2><p class="muted">Registre seguimientos y deje lista la comunicación con el acudiente principal.</p></div>
+            <div class="tools"><select id="cursoObservador"></select><input id="buscarObservacion" placeholder="Buscar estudiante"><button class="primary" id="nuevaObservacion">+ Nueva observación</button></div>
+          </div>
+          <p class="mensaje" id="mensajeObservador"></p>
+          <div class="tabla"><table><thead><tr><th>Fecha</th><th>Estudiante</th><th>Tipo</th><th>Descripción</th><th>Notificación</th></tr></thead><tbody id="filasObservador"></tbody></table></div>
+        </article>
+        <div class="modal" id="modalObservacion" hidden>
+          <form class="modal-card modal-amplio" id="formObservacion">
+            <div class="modal-head"><div><p class="eyebrow">Observador · CharryComunica</p><h2>Nueva observación</h2></div><button type="button" class="cerrar" id="cerrarObservacion" aria-label="Cerrar">×</button></div>
+            <label>Estudiante<select id="observacionEstudiante" required></select></label>
+            <div class="form-dos-columnas"><label>Tipo<select id="observacionTipo" required><option value="academica">Académica</option><option value="convivencia">Convivencia</option><option value="reconocimiento">Reconocimiento</option><option value="seguimiento">Seguimiento</option></select></label><label>Nivel<select id="observacionNivel" required><option value="informativa">Informativa</option><option value="leve">Leve</option><option value="moderada">Moderada</option><option value="grave">Grave</option></select></label></div>
+            <label>Asunto<input id="observacionTitulo" maxlength="160" placeholder="Ej.: Reconocimiento por participación" required></label>
+            <label>Observación<textarea id="observacionDescripcion" rows="5" maxlength="3000" placeholder="Describa los hechos de manera clara, respetuosa y verificable." required></textarea></label>
+            <label>Acciones o compromisos<textarea id="observacionAcciones" rows="3" maxlength="2000" placeholder="Acuerdos, seguimiento o acciones pedagógicas."></textarea></label>
+            <label class="check"><input type="checkbox" id="notificarAcudiente" checked> Preparar aviso para el acudiente principal</label>
+            <p class="muted aviso-observador">Al guardar, el aviso queda pendiente. El envío automático se habilitará al conectar el correo institucional o WhatsApp.</p>
+            <div class="modal-actions"><button type="button" class="secundario" id="cancelarObservacion">Cancelar</button><button type="submit" class="primary" id="guardarObservacion">Guardar observación</button></div>
+            <p class="mensaje" id="mensajeFormularioObservacion"></p>
           </form>
         </div>
       </section>

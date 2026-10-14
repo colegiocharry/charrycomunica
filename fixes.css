@@ -20,6 +20,12 @@
 .secundario { border:1px solid var(--linea); background:#fff; border-radius:10px; padding:10px 14px; font-weight:700; cursor:pointer; }
 .fecha { padding:14px 18px; font-size:15px; font-weight:700; }
 .fecha input { font-size:17px; min-width:155px; padding:4px; }
+.modal-amplio { width:min(650px,100%); max-height:calc(100vh - 40px); overflow:auto; }
+.modal-card textarea { display:block; width:100%; margin-top:6px; padding:11px 12px; border:1px solid var(--linea); border-radius:10px; resize:vertical; font:inherit; line-height:1.45; }
+.form-dos-columnas { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.check { display:flex; align-items:center; gap:9px; color:var(--texto); }
+.check input { width:18px!important; height:18px; margin:0!important; accent-color:var(--vino); }
+.aviso-observador { background:var(--suave); border-radius:10px; padding:10px 12px; margin:0; font-size:12px; }
 
 /* Ajustes para teléfonos: navegación compacta, controles táctiles y sin desborde lateral. */
 @media (max-width: 600px) {
@@ -73,4 +79,5 @@
   .modal-card { margin:8px 0; padding:19px 15px; border-radius:16px; }
   .modal-actions { flex-direction:column-reverse; }
   .modal-actions button { width:100%; min-height:44px; }
+  .form-dos-columnas { grid-template-columns:1fr; gap:10px; }
 }

@@ -5,7 +5,7 @@
   const db = configured && libraryReady ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
   const $ = s => document.querySelector(s);
   const estados = { presente: "Presente", tarde: "Tarde", evasion: "Evasión" };
-  let perfil = null, cursos = [], estudiantes = [], asistencia = new Map(), informeDatos = [];
+  let perfil = null, cursos = [], estudiantes = [], asistencia = new Map(), informeDatos = [], observaciones = [];
 
   const fechaLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
   const nombreCurso = c => `${c.grado}${c.grupo}`;
@@ -52,7 +52,7 @@
     if (error || !data?.activo) { await db.auth.signOut(); return mostrar("#loginMensaje", "La cuenta no tiene un perfil activo autorizado.", true); }
     perfil=data; const nombre=`${data.nombres} ${data.apellidos}`.trim();
     $("#nombrePerfil").textContent=nombre; $("#rolPerfil").textContent=data.rol; $("#avatar").textContent=iniciales(nombre); $("#saludo").textContent=`Bienvenido, ${data.nombres}`;
-    $("#crearDocentes").hidden=!["administrador","rectoria"].includes(data.rol);
+    if ($("#crearDocentes")) $("#crearDocentes").hidden=!["administrador","rectoria"].includes(data.rol);
     $("#login").hidden=true; $("#app").hidden=false;
     await cargarCursos();
   }
@@ -61,8 +61,9 @@
     const { data, error } = await db.from("cursos").select("id,anio_escolar,grado,grupo,jornada,activo").eq("activo",true).order("jornada").order("grado").order("grupo");
     if (error) return mostrar("#mensaje", `No se pudieron cargar los cursos: ${error.message}`, true);
     cursos=(data||[]).sort(ordenarCursos); const opciones=cursos.map(c=>`<option value="${c.id}">${esc(nombreCurso(c))} · ${esc(c.jornada.replaceAll("_"," "))}</option>`).join("");
-    $("#curso").innerHTML=opciones; $("#cursoEstudiantes").innerHTML=opciones; $("#estudianteCurso").innerHTML=opciones; $("#cursoInforme").innerHTML=opciones;
-    $("#desdeInforme").value=$("#fecha").value; $("#hastaInforme").value=$("#fecha").value;
+    ["#curso","#cursoEstudiantes","#estudianteCurso","#cursoInforme","#cursoObservador"].forEach(selector=>{ if($(selector)) $(selector).innerHTML=opciones; });
+    if($("#desdeInforme")) $("#desdeInforme").value=$("#fecha").value;
+    if($("#hastaInforme")) $("#hastaInforme").value=$("#fecha").value;
     await cargarEstudiantes();
   }
 
@@ -172,6 +173,71 @@
     cerrarEstudiante(); $("#curso").value=datos.curso_id; $("#cursoEstudiantes").value=datos.curso_id; await cargarEstudiantes();
     mostrar("#mensajeEstudiantes",id?"Estudiante y datos de acudiente actualizados.":"Estudiante añadido correctamente.");
   };
+
+  function estadoNotificacion(estado) {
+    return ({ pendiente:"Pendiente", enviado:"Enviado", sin_contacto:"Sin contacto", error:"Requiere revisión" })[estado] || "No programada";
+  }
+
+  function renderObservador() {
+    if (!$("#filasObservador")) return;
+    const q=$("#buscarObservacion")?.value.trim().toLocaleLowerCase("es") || "";
+    const lista=observaciones.filter(o=>`${o.estudiantes?.apellidos||""} ${o.estudiantes?.nombres||""} ${o.titulo||""}`.toLocaleLowerCase("es").includes(q));
+    $("#filasObservador").innerHTML=lista.map(o=>{
+      const estudiante=`${o.estudiantes?.apellidos||""} ${o.estudiantes?.nombres||""}`.trim() || "Estudiante";
+      const extracto=(o.descripcion||"").length>105?`${o.descripcion.slice(0,105)}…`:o.descripcion||"";
+      return `<tr><td>${esc(o.fecha)}</td><td><strong>${esc(estudiante)}</strong></td><td><span class="pill">${esc(o.tipo)}</span><br><small class="muted">${esc(o.nivel)}</small></td><td><strong>${esc(o.titulo)}</strong><br><span class="muted">${esc(extracto)}</span></td><td><span class="pill">${esc(estadoNotificacion(o.estado_notificacion))}</span></td></tr>`;
+    }).join("") || `<tr><td colspan="5" class="muted">Aún no hay observaciones para este curso.</td></tr>`;
+  }
+
+  async function cargarObservador() {
+    if (!$("#cursoObservador")) return;
+    const cursoId=$("#cursoObservador").value;
+    if (!cursoId) return;
+    mostrar("#mensajeObservador","Cargando observaciones…");
+    const {data,error}=await db.from("observaciones")
+      .select("id,fecha,tipo,nivel,titulo,descripcion,estado_notificacion,estudiante_id,estudiantes(nombres,apellidos)")
+      .eq("curso_id",cursoId).order("fecha",{ascending:false}).order("created_at",{ascending:false});
+    if(error) { mostrar("#mensajeObservador",`No se pudieron cargar las observaciones: ${error.message}`,true); return; }
+    observaciones=data||[]; renderObservador(); mostrar("#mensajeObservador",observaciones.length?"Historial actualizado.":"No hay observaciones registradas en este curso.");
+  }
+
+  function abrirObservacion() {
+    if (!$("#modalObservacion")) return;
+    const cursoId=$("#cursoObservador").value;
+    const lista=estudiantes.filter(e=>e.curso_id===cursoId).sort((a,b)=>`${a.apellidos} ${a.nombres}`.localeCompare(`${b.apellidos} ${b.nombres}`,"es"));
+    if (!lista.length) { mostrar("#mensajeObservador","Seleccione un curso con estudiantes antes de crear una observación.",true); return; }
+    $("#observacionEstudiante").innerHTML=lista.map(e=>`<option value="${e.id}">${esc(`${e.apellidos} ${e.nombres}`.trim())}</option>`).join("");
+    $("#formObservacion").reset();
+    $("#observacionEstudiante").innerHTML=lista.map(e=>`<option value="${e.id}">${esc(`${e.apellidos} ${e.nombres}`.trim())}</option>`).join("");
+    $("#notificarAcudiente").checked=true; $("#mensajeFormularioObservacion").textContent="";
+    $("#modalObservacion").hidden=false;
+  }
+
+  function cerrarObservacion(){ if($("#modalObservacion")) { $("#modalObservacion").hidden=true; $("#formObservacion").reset(); } }
+
+  const formularioObservacion=$("#formObservacion");
+  if(formularioObservacion) formularioObservacion.onsubmit=async ev=>{
+    ev.preventDefault();
+    const cursoId=$("#cursoObservador").value;
+    const datos={
+      estudiante_id:$("#observacionEstudiante").value, curso_id:cursoId, registrado_por:perfil.id,
+      fecha:$("#fecha").value, tipo:$("#observacionTipo").value, nivel:$("#observacionNivel").value,
+      titulo:$("#observacionTitulo").value.trim(), descripcion:$("#observacionDescripcion").value.trim(),
+      acciones_acordadas:$("#observacionAcciones").value.trim()||null,
+      notificar_acudiente:$("#notificarAcudiente").checked
+    };
+    const boton=$("#guardarObservacion"); boton.disabled=true;
+    const {error}=await db.from("observaciones").insert(datos);
+    boton.disabled=false;
+    if(error) return mostrar("#mensajeFormularioObservacion",`No se pudo guardar: ${error.message}`,true);
+    cerrarObservacion(); await cargarObservador(); mostrar("#mensajeObservador",datos.notificar_acudiente?"Observación guardada y aviso preparado para el acudiente.":"Observación guardada correctamente.");
+  };
+  if($("#nuevaObservacion")) $("#nuevaObservacion").onclick=abrirObservacion;
+  if($("#cerrarObservacion")) $("#cerrarObservacion").onclick=cerrarObservacion;
+  if($("#cancelarObservacion")) $("#cancelarObservacion").onclick=cerrarObservacion;
+  if($("#buscarObservacion")) $("#buscarObservacion").oninput=renderObservador;
+  if($("#cursoObservador")) $("#cursoObservador").onchange=async()=>{ $("#curso").value=$("#cursoObservador").value; await cargarEstudiantes(); await cargarObservador(); };
+
   if($("#nuevoEstudiante")) $("#nuevoEstudiante").onclick=()=>abrirEstudiante(); if($("#cerrarEstudiante")) $("#cerrarEstudiante").onclick=cerrarEstudiante; if($("#cancelarEstudiante")) $("#cancelarEstudiante").onclick=cerrarEstudiante; if($("#buscarEstudiante")) $("#buscarEstudiante").oninput=renderEstudiantes;
   if($("#cursoEstudiantes")) $("#cursoEstudiantes").onchange=()=>{$("#curso").value=$("#cursoEstudiantes").value;cargarEstudiantes();};
 
@@ -182,8 +248,9 @@
     boton.disabled=false; if(error)return mostrar("#mensaje",`No se pudo guardar: ${error.message}`,true); mostrar("#mensaje","Asistencia guardada correctamente.");
   };
   $("#curso").onchange=cargarEstudiantes; $("#fecha").onchange=cargarAsistencia; $("#buscar").oninput=render;
-  $("#generarInforme").onclick=cargarInforme; $("#descargarInforme").onclick=descargarInforme;
-  $("#crearDocentes").onclick=async()=>{
+  if($("#generarInforme")) $("#generarInforme").onclick=cargarInforme;
+  if($("#descargarInforme")) $("#descargarInforme").onclick=descargarInforme;
+  if($("#crearDocentes")) $("#crearDocentes").onclick=async()=>{
     if(!confirm("Se crearán las cuentas pendientes de los docentes. ¿Desea continuar?")) return;
     const boton=$("#crearDocentes"); boton.disabled=true; boton.textContent="Creando cuentas…";
     const {data,error}=await db.functions.invoke("crear-docentes");
@@ -202,7 +269,7 @@
     alert(`${data?.mensaje||"Proceso finalizado."}\nCuentas omitidas: ${data?.omitidos||0}${data?.errores?.length?`\nErrores: ${data.errores.length}`:""}`);
   };
   $("#salir").onclick=()=>db.auth.signOut();
-  $("#cambiarContrasena").onclick=async()=>{
+  if($("#cambiarContrasena")) $("#cambiarContrasena").onclick=async()=>{
     const nueva=prompt("Escriba una nueva contraseña (mínimo 8 caracteres):");
     if(nueva===null) return;
     if(nueva.length<8) return alert("La contraseña debe tener al menos 8 caracteres.");
@@ -213,6 +280,6 @@
     if(error) return alert(`No fue posible cambiar la contraseña: ${error.message}`);
     alert("Contraseña actualizada correctamente.");
   };
-  document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{const vista=$("#"+b.dataset.view); if(!vista)return; document.querySelectorAll("nav button").forEach(x=>x.classList.remove("activo"));document.querySelectorAll(".vista").forEach(x=>x.classList.remove("activa"));b.classList.add("activo");vista.classList.add("activa");$("#titulo").textContent=({asistencia:"Control de asistencia",estadisticas:"Estadísticas",estudiantes:"Gestión de estudiantes"})[b.dataset.view]; if(b.dataset.view==="estadisticas") cargarInforme();});
+  document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{const vista=$("#"+b.dataset.view); if(!vista)return; document.querySelectorAll("nav button").forEach(x=>x.classList.remove("activo"));document.querySelectorAll(".vista").forEach(x=>x.classList.remove("activa"));b.classList.add("activo");vista.classList.add("activa");$("#titulo").textContent=({asistencia:"Control de asistencia",estadisticas:"Estadísticas",estudiantes:"Gestión de estudiantes",observador:"Observador del estudiante"})[b.dataset.view]; if(b.dataset.view==="estadisticas" && $("#cursoInforme")) cargarInforme(); if(b.dataset.view==="observador") cargarObservador();});
   iniciar();
 })();
