@@ -88,12 +88,14 @@
           <form class="modal-card modal-amplio" id="formObservacion">
             <div class="modal-head"><div><p class="eyebrow">Observador · CharryComunica</p><h2>Nueva observación</h2></div><button type="button" class="cerrar" id="cerrarObservacion" aria-label="Cerrar">×</button></div>
             <label>Estudiante<select id="observacionEstudiante" required></select></label>
-            <div class="form-dos-columnas"><label>Tipo<select id="observacionTipo" required><option value="academica">Académica</option><option value="convivencia">Convivencia</option><option value="reconocimiento">Reconocimiento</option><option value="seguimiento">Seguimiento</option></select></label><label>Nivel<select id="observacionNivel" required><option value="informativa">Informativa</option><option value="leve">Leve</option><option value="moderada">Moderada</option><option value="grave">Grave</option></select></label></div>
+            <div class="form-dos-columnas"><label>Clase de registro<select id="observacionTipo" required><option value="academica">Académica</option><option value="convivencia">Convivencia</option><option value="reconocimiento">Reconocimiento</option><option value="seguimiento">Seguimiento</option></select></label><label>Clasificación según el Manual<select id="observacionClasificacion" required><option value="seguimiento">Seguimiento formativo</option><option value="tipo_i">Situación Tipo I</option><option value="tipo_ii">Situación Tipo II</option><option value="tipo_iii">Situación Tipo III</option></select></label></div>
+            <div class="protocolo-observador" id="protocoloObservador" role="status"></div>
+            <label>Instancia de seguimiento<select id="observacionRemision" required><option value="aula">Docente y aula</option><option value="coordinacion_academica">Coordinación Académica</option><option value="coordinacion_convivencia">Coordinación de Convivencia</option><option value="orientacion_escolar">Orientación Escolar</option><option value="rectoria_comite">Rectoría / Comité Escolar de Convivencia</option><option value="ruta_externa">Ruta externa competente</option></select></label>
             <label>Asunto<input id="observacionTitulo" maxlength="160" placeholder="Ej.: Reconocimiento por participación" required></label>
             <label>Observación<textarea id="observacionDescripcion" rows="5" maxlength="3000" placeholder="Describa los hechos de manera clara, respetuosa y verificable." required></textarea></label>
             <label>Acciones o compromisos<textarea id="observacionAcciones" rows="3" maxlength="2000" placeholder="Acuerdos, seguimiento o acciones pedagógicas."></textarea></label>
             <label class="check"><input type="checkbox" id="notificarAcudiente" checked> Preparar aviso para el acudiente principal</label>
-            <p class="muted aviso-observador">Al guardar, el aviso queda pendiente. El envío automático se habilitará al conectar el correo institucional o WhatsApp.</p>
+            <p class="muted aviso-observador" id="avisoObservador">Al guardar, el aviso queda pendiente. El envío automático se habilitará al conectar el correo institucional o WhatsApp.</p>
             <div class="modal-actions"><button type="button" class="secundario" id="cancelarObservacion">Cancelar</button><button type="submit" class="primary" id="guardarObservacion">Guardar observación</button></div>
             <p class="mensaje" id="mensajeFormularioObservacion"></p>
           </form>
@@ -104,6 +106,6 @@
 
   <script src="vendor/supabase.js"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

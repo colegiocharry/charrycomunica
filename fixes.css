@@ -26,6 +26,10 @@
 .check { display:flex; align-items:center; gap:9px; color:var(--texto); }
 .check input { width:18px!important; height:18px; margin:0!important; accent-color:var(--vino); }
 .aviso-observador { background:var(--suave); border-radius:10px; padding:10px 12px; margin:0; font-size:12px; }
+.protocolo-observador { border:1px solid #e4c9d2; background:#fff9fb; border-radius:12px; padding:13px 15px; color:#482331; font-size:.92rem; line-height:1.45; }
+.protocolo-observador strong { display:block; margin-bottom:4px; color:#6d2037; }
+.protocolo-observador.urgente { border-color:#bf4a42; background:#fff4f2; }
+.protocolo-observador.urgente strong { color:#a22c25; }
 
 /* Ajustes para teléfonos: navegación compacta, controles táctiles y sin desborde lateral. */
 @media (max-width: 600px) {

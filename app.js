@@ -178,6 +178,25 @@
     return ({ pendiente:"Pendiente", enviado:"Enviado", sin_contacto:"Sin contacto", error:"Requiere revisión" })[estado] || "No programada";
   }
 
+  const etiquetasClasificacion={seguimiento:"Seguimiento formativo",tipo_i:"Situación Tipo I",tipo_ii:"Situación Tipo II",tipo_iii:"Situación Tipo III"};
+  const protocolosObservador={
+    seguimiento:{instancia:"aula",texto:"Registro formativo. Describa hechos verificables, acuerde acciones pedagógicas y haga seguimiento respetando la confidencialidad."},
+    tipo_i:{instancia:"aula",texto:"Tipo I: atienda de inmediato en el aula, detenga el comportamiento, realice conversación restaurativa, acuerde una reparación y registre los compromisos. Informe a la familia si hay recurrencia o se requiere corresponsabilidad."},
+    tipo_ii:{instancia:"coordinacion_convivencia",texto:"Tipo II: no se gestiona solo desde el aula. Remita a Coordinación de Convivencia para activar el protocolo institucional, proteger a las personas involucradas y realizar seguimiento. No se envía un aviso automático a la familia desde este formulario."},
+    tipo_iii:{instancia:"rectoria_comite",texto:"Tipo III: requiere activación inmediata de la Ruta de Atención Integral, protección de derechos e información a Rectoría / Comité Escolar de Convivencia. No describa detalles sensibles aquí ni envíe aviso automático; siga el protocolo institucional y las rutas externas competentes."}
+  };
+
+  function actualizarProtocoloObservador(){
+    const clasificacion=$("#observacionClasificacion")?.value || "seguimiento";
+    const protocolo=protocolosObservador[clasificacion] || protocolosObservador.seguimiento;
+    const cuadro=$("#protocoloObservador"), remision=$("#observacionRemision"), aviso=$("#notificarAcudiente"), textoAviso=$("#avisoObservador");
+    if(cuadro){ cuadro.classList.toggle("urgente",clasificacion==="tipo_iii"); cuadro.innerHTML=`<strong>${etiquetasClasificacion[clasificacion] || "Registro"}</strong>${protocolo.texto}`; }
+    if(remision) remision.value=protocolo.instancia;
+    const sensible=["tipo_ii","tipo_iii"].includes(clasificacion);
+    if(aviso){ aviso.disabled=sensible; if(sensible) aviso.checked=false; else if(!aviso.checked) aviso.checked=true; }
+    if(textoAviso) textoAviso.textContent=sensible?"Por protección, la comunicación con la familia será definida por la instancia institucional responsable; no se prepara un aviso automático.":"Al guardar, el aviso queda pendiente. El envío automático se habilitará al conectar el correo institucional o WhatsApp.";
+  }
+
   function renderObservador() {
     if (!$("#filasObservador")) return;
     const q=$("#buscarObservacion")?.value.trim().toLocaleLowerCase("es") || "";
@@ -185,7 +204,7 @@
     $("#filasObservador").innerHTML=lista.map(o=>{
       const estudiante=`${o.estudiantes?.apellidos||""} ${o.estudiantes?.nombres||""}`.trim() || "Estudiante";
       const extracto=(o.descripcion||"").length>105?`${o.descripcion.slice(0,105)}…`:o.descripcion||"";
-      return `<tr><td>${esc(o.fecha)}</td><td><strong>${esc(estudiante)}</strong></td><td><span class="pill">${esc(o.tipo)}</span><br><small class="muted">${esc(o.nivel)}</small></td><td><strong>${esc(o.titulo)}</strong><br><span class="muted">${esc(extracto)}</span></td><td><span class="pill">${esc(estadoNotificacion(o.estado_notificacion))}</span></td></tr>`;
+      return `<tr><td>${esc(o.fecha)}</td><td><strong>${esc(estudiante)}</strong></td><td><span class="pill">${esc(etiquetasClasificacion[o.clasificacion]||o.tipo)}</span><br><small class="muted">${esc(o.tipo)}</small></td><td><strong>${esc(o.titulo)}</strong><br><span class="muted">${esc(extracto)}</span></td><td><span class="pill">${esc(estadoNotificacion(o.estado_notificacion))}</span></td></tr>`;
     }).join("") || `<tr><td colspan="5" class="muted">Aún no hay observaciones para este curso.</td></tr>`;
   }
 
@@ -195,7 +214,7 @@
     if (!cursoId) return;
     mostrar("#mensajeObservador","Cargando observaciones…");
     const {data,error}=await db.from("observaciones")
-      .select("id,fecha,tipo,nivel,titulo,descripcion,estado_notificacion,estudiante_id,estudiantes(nombres,apellidos)")
+      .select("id,fecha,tipo,clasificacion,remision_a,titulo,descripcion,estado_notificacion,estudiante_id,estudiantes(nombres,apellidos)")
       .eq("curso_id",cursoId).order("fecha",{ascending:false}).order("created_at",{ascending:false});
     if(error) { mostrar("#mensajeObservador",`No se pudieron cargar las observaciones: ${error.message}`,true); return; }
     observaciones=data||[]; renderObservador(); mostrar("#mensajeObservador",observaciones.length?"Historial actualizado.":"No hay observaciones registradas en este curso.");
@@ -209,7 +228,7 @@
     $("#observacionEstudiante").innerHTML=lista.map(e=>`<option value="${e.id}">${esc(`${e.apellidos} ${e.nombres}`.trim())}</option>`).join("");
     $("#formObservacion").reset();
     $("#observacionEstudiante").innerHTML=lista.map(e=>`<option value="${e.id}">${esc(`${e.apellidos} ${e.nombres}`.trim())}</option>`).join("");
-    $("#notificarAcudiente").checked=true; $("#mensajeFormularioObservacion").textContent="";
+    $("#notificarAcudiente").checked=true; $("#mensajeFormularioObservacion").textContent=""; actualizarProtocoloObservador();
     $("#modalObservacion").hidden=false;
   }
 
@@ -221,7 +240,7 @@
     const cursoId=$("#cursoObservador").value;
     const datos={
       estudiante_id:$("#observacionEstudiante").value, curso_id:cursoId, registrado_por:perfil.id,
-      fecha:$("#fecha").value, tipo:$("#observacionTipo").value, nivel:$("#observacionNivel").value,
+      fecha:$("#fecha").value, tipo:$("#observacionTipo").value, clasificacion:$("#observacionClasificacion").value, remision_a:$("#observacionRemision").value,
       titulo:$("#observacionTitulo").value.trim(), descripcion:$("#observacionDescripcion").value.trim(),
       acciones_acordadas:$("#observacionAcciones").value.trim()||null,
       notificar_acudiente:$("#notificarAcudiente").checked
@@ -236,6 +255,7 @@
   if($("#cerrarObservacion")) $("#cerrarObservacion").onclick=cerrarObservacion;
   if($("#cancelarObservacion")) $("#cancelarObservacion").onclick=cerrarObservacion;
   if($("#buscarObservacion")) $("#buscarObservacion").oninput=renderObservador;
+  if($("#observacionClasificacion")) $("#observacionClasificacion").onchange=actualizarProtocoloObservador;
   if($("#cursoObservador")) $("#cursoObservador").onchange=async()=>{ $("#curso").value=$("#cursoObservador").value; await cargarEstudiantes(); await cargarObservador(); };
 
   if($("#nuevoEstudiante")) $("#nuevoEstudiante").onclick=()=>abrirEstudiante(); if($("#cerrarEstudiante")) $("#cerrarEstudiante").onclick=cerrarEstudiante; if($("#cancelarEstudiante")) $("#cancelarEstudiante").onclick=cerrarEstudiante; if($("#buscarEstudiante")) $("#buscarEstudiante").oninput=renderEstudiantes;
