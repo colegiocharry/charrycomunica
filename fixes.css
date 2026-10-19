@@ -30,6 +30,11 @@
 .protocolo-observador strong { display:block; margin-bottom:4px; color:#6d2037; }
 .protocolo-observador.urgente { border-color:#bf4a42; background:#fff4f2; }
 .protocolo-observador.urgente strong { color:#a22c25; }
+.metricas { grid-template-columns:repeat(4,1fr); }
+.novedad-asistencia { min-width:190px; padding:8px 10px; border:1px solid var(--linea); border-radius:9px; background:#fff; color:var(--texto); }
+.sin-novedad { color:var(--muted); font-size:13px; }
+.estado.sel[data-estado="no_asiste"] { background:var(--rojo); }
+.estado.sel[data-estado="evasion"] { background:#76476f; }
 
 /* Ajustes para teléfonos: navegación compacta, controles táctiles y sin desborde lateral. */
 @media (max-width: 600px) {
@@ -76,7 +81,8 @@
   .fecha-campo { display:grid; gap:4px; font-size:12px; font-weight:700; }
   .fecha-campo input { width:100%; min-height:42px; padding:8px; border:1px solid var(--linea); border-radius:9px; }
   .tabla { width:100%; max-width:100%; -webkit-overflow-scrolling:touch; border:1px solid var(--linea); border-radius:10px; }
-  table { min-width:570px; }
+  .metricas { grid-template-columns:repeat(2,1fr); }
+  table { min-width:820px; }
   th,td { padding:10px 8px; }
   .estado { min-height:38px; padding:6px 8px; }
   .modal { align-items:start; overflow:auto; padding:10px; }

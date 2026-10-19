@@ -36,13 +36,13 @@
       <section id="asistencia" class="vista activa">
         <div class="hero"><div><h2 id="saludo">Bienvenido</h2><p>Seleccione un curso para registrar la asistencia.</p></div><b>✓</b></div>
         <div class="metricas" id="metricas"></div>
-        <article class="panel"><div class="panel-head"><div><h2>Listado del curso</h2><span class="pill" id="jornada"></span></div><div class="tools"><select id="curso"></select><input id="buscar" placeholder="Buscar estudiante"><button class="primary" id="guardar">Guardar asistencia</button></div></div><p class="mensaje" id="mensaje"></p><div class="tabla"><table><thead><tr><th>N.º</th><th>Estudiante</th><th>Curso</th><th>Estado</th></tr></thead><tbody id="filas"></tbody></table></div></article>
+        <article class="panel"><div class="panel-head"><div><h2>Listado del curso</h2><span class="pill" id="jornada"></span></div><div class="tools"><select id="curso"></select><input id="buscar" placeholder="Buscar estudiante"><button class="primary" id="guardar">Guardar asistencia</button></div></div><p class="mensaje" id="mensaje"></p><div class="tabla"><table><thead><tr><th>N.º</th><th>Estudiante</th><th>Curso</th><th>Estado</th><th>Novedad</th></tr></thead><tbody id="filas"></tbody></table></div></article>
       </section>
       <section id="estadisticas" class="vista">
         <article class="panel">
           <div class="panel-head"><div><h2>Informe de asistencias</h2><p class="muted">Seleccione un curso y el periodo que desea consultar.</p></div><div class="tools"><select id="cursoInforme"></select><label class="fecha-campo">Desde<input type="date" id="desdeInforme"></label><label class="fecha-campo">Hasta<input type="date" id="hastaInforme"></label><button class="primary" id="generarInforme">Generar informe</button><button class="secundario" id="descargarInforme">Descargar Excel</button></div></div>
           <div class="metricas" id="metricasGlobales"></div><div id="resumen" class="resumen"></div>
-          <div class="tabla"><table><thead><tr><th>Fecha</th><th>Estudiante</th><th>Curso</th><th>Estado</th></tr></thead><tbody id="filasInforme"></tbody></table></div><p class="mensaje" id="mensajeInforme"></p>
+          <div class="tabla"><table><thead><tr><th>Fecha</th><th>Estudiante</th><th>Curso</th><th>Estado</th><th>Novedad</th></tr></thead><tbody id="filasInforme"></tbody></table></div><p class="mensaje" id="mensajeInforme"></p>
         </article>
       </section>
       <section id="estudiantes" class="vista">

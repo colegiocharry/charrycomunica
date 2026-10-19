@@ -4,8 +4,9 @@
   const libraryReady = Boolean(window.supabase?.createClient);
   const db = configured && libraryReady ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
   const $ = s => document.querySelector(s);
-  const estados = { presente: "Presente", tarde: "Tarde", evasion: "Evasión" };
-  let perfil = null, cursos = [], estudiantes = [], asistencia = new Map(), informeDatos = [], observaciones = [];
+  const estados = { presente: "Presente", no_asiste: "No asiste", tarde: "Tarde", evasion: "Evasión" };
+  const novedades = { excusa_medica: "Excusa médica", excusa_personal: "Excusa personal", pendiente_justificar: "Pendiente de justificar" };
+  let perfil = null, cursos = [], estudiantes = [], asistencia = new Map(), novedadesAsistencia = new Map(), informeDatos = [], observaciones = [];
 
   const fechaLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
   const nombreCurso = c => `${c.grado}${c.grupo}`;
@@ -75,10 +76,13 @@
   }
 
   async function cargarAsistencia() {
-    asistencia=new Map(); const cursoId=$("#curso").value, fecha=$("#fecha").value;
+    asistencia=new Map(); novedadesAsistencia=new Map(); const cursoId=$("#curso").value, fecha=$("#fecha").value;
     const { data, error } = await db.from("asistencias").select("*").eq("curso_id",cursoId).eq("fecha",fecha);
     if (error) mostrar("#mensaje", `No se pudo consultar la asistencia: ${error.message}`, true);
-    (data||[]).forEach(x=>asistencia.set(x.estudiante_id,x.estado)); render();
+    (data||[]).forEach(x=>{
+      asistencia.set(x.estudiante_id,x.estado);
+      if (x.novedad) novedadesAsistencia.set(x.estudiante_id,x.novedad);
+    }); render();
   }
 
   function render() {
@@ -86,9 +90,24 @@
     const contar=e=>estudiantes.filter(x=>(asistencia.get(x.id)||"presente")===e).length;
     $("#metricas").innerHTML=Object.entries(estados).map(([k,v])=>`<div class="metrica"><small>${v}</small><strong>${contar(k)}</strong></div>`).join("");
     $("#metricasGlobales").innerHTML=$("#metricas").innerHTML;
-    $("#filas").innerHTML=lista.map((e,i)=>{const nombre=`${e.apellidos} ${e.nombres}`.trim(),actual=asistencia.get(e.id)||"presente";return `<tr><td>${i+1}</td><td><div class="persona"><span class="inicial">${iniciales(nombre)}</span><strong>${esc(nombre)}</strong></div></td><td><span class="pill">${esc(nombreCurso(cursos.find(c=>c.id===e.curso_id)||{grado:"",grupo:""}))}</span></td><td><div class="estados">${Object.entries(estados).map(([k,v])=>`<button class="estado ${actual===k?"sel":""}" data-id="${e.id}" data-estado="${k}">${v}</button>`).join("")}</div></td></tr>`}).join("");
-    const total=Math.max(estudiantes.length,1); $("#resumen").innerHTML=Object.entries(estados).map(([k,v])=>`<div><b>${v}: ${contar(k)}</b><div class="barra"><span style="width:${contar(k)/total*100}%;background:${k==='presente'?'var(--verde)':k==='tarde'?'var(--ambar)':'var(--rojo)'}"></span></div></div>`).join("");
-    document.querySelectorAll(".estado").forEach(b=>b.onclick=()=>{asistencia.set(b.dataset.id,b.dataset.estado);render();}); renderEstudiantes();
+    $("#filas").innerHTML=lista.map((e,i)=>{
+      const nombre=`${e.apellidos} ${e.nombres}`.trim(), actual=asistencia.get(e.id)||"presente", novedad=novedadesAsistencia.get(e.id)||"";
+      const campoNovedad=actual==="no_asiste"
+        ? `<select class="novedad-asistencia" data-id="${e.id}" aria-label="Novedad de ${esc(nombre)}">${Object.entries(novedades).map(([k,v])=>`<option value="${k}" ${novedad===k?"selected":""}>${v}</option>`).join("")}</select>`
+        : `<span class="sin-novedad">No aplica</span>`;
+      return `<tr><td>${i+1}</td><td><div class="persona"><span class="inicial">${iniciales(nombre)}</span><strong>${esc(nombre)}</strong></div></td><td><span class="pill">${esc(nombreCurso(cursos.find(c=>c.id===e.curso_id)||{grado:"",grupo:""}))}</span></td><td><div class="estados">${Object.entries(estados).map(([k,v])=>`<button class="estado ${actual===k?"sel":""}" data-id="${e.id}" data-estado="${k}">${v}</button>`).join("")}</div></td><td>${campoNovedad}</td></tr>`;
+    }).join("");
+    const colorEstado=k=>k==='presente'?"var(--verde)":k==='tarde'?"var(--ambar)":k==='evasion'?"var(--morado)":"var(--rojo)";
+    const total=Math.max(estudiantes.length,1); $("#resumen").innerHTML=Object.entries(estados).map(([k,v])=>`<div><b>${v}: ${contar(k)}</b><div class="barra"><span style="width:${contar(k)/total*100}%;background:${colorEstado(k)}"></span></div></div>`).join("");
+    document.querySelectorAll(".estado").forEach(b=>b.onclick=()=>{
+      const estado=b.dataset.estado;
+      asistencia.set(b.dataset.id,estado);
+      if (estado==="no_asiste" && !novedadesAsistencia.get(b.dataset.id)) novedadesAsistencia.set(b.dataset.id,"pendiente_justificar");
+      if (estado!=="no_asiste") novedadesAsistencia.delete(b.dataset.id);
+      render();
+    });
+    document.querySelectorAll(".novedad-asistencia").forEach(select=>select.onchange=()=>novedadesAsistencia.set(select.dataset.id,select.value));
+    renderEstudiantes();
   }
 
   async function cargarInforme() {
@@ -98,23 +117,23 @@
     mostrar("#mensajeInforme","Generando informe…");
     const [{data: listaEstudiantes,error:errorEstudiantes},{data: registros,error:errorRegistros}] = await Promise.all([
       db.from("estudiantes").select("id,nombres,apellidos").eq("curso_id",cursoId).eq("activo",true).order("apellidos").order("nombres"),
-      db.from("asistencias").select("fecha,estado,estudiante_id").eq("curso_id",cursoId).gte("fecha",desde).lte("fecha",hasta).order("fecha",{ascending:false})
+      db.from("asistencias").select("fecha,estado,novedad,estudiante_id").eq("curso_id",cursoId).gte("fecha",desde).lte("fecha",hasta).order("fecha",{ascending:false})
     ]);
     if (errorEstudiantes || errorRegistros) return mostrar("#mensajeInforme",`No se pudo generar el informe: ${(errorEstudiantes||errorRegistros).message}`,true);
     const nombres = new Map((listaEstudiantes||[]).map(e=>[e.id,`${e.apellidos} ${e.nombres}`.trim()]));
-    const curso=cursos.find(c=>c.id===cursoId), datos=(registros||[]).map(r=>({fecha:r.fecha,estudiante:nombres.get(r.estudiante_id)||"Estudiante no disponible",curso:nombreCurso(curso),estado:r.estado})).sort((a,b)=>b.fecha.localeCompare(a.fecha)||a.estudiante.localeCompare(b.estudiante,"es"));
+    const curso=cursos.find(c=>c.id===cursoId), datos=(registros||[]).map(r=>({fecha:r.fecha,estudiante:nombres.get(r.estudiante_id)||"Estudiante no disponible",curso:nombreCurso(curso),estado:r.estado,novedad:r.novedad})).sort((a,b)=>b.fecha.localeCompare(a.fecha)||a.estudiante.localeCompare(b.estudiante,"es"));
     informeDatos=datos; const cuenta=Object.fromEntries(Object.keys(estados).map(e=>[e,datos.filter(d=>d.estado===e).length]));
     $("#metricasGlobales").innerHTML=Object.entries(estados).map(([k,n])=>`<div class="metrica"><small>${n}</small><strong>${cuenta[k]}</strong></div>`).join("");
     $("#resumen").innerHTML=`<p><strong>${curso?nombreCurso(curso):""}</strong> · ${desde} a ${hasta} · ${datos.length} registros</p>`;
-    $("#filasInforme").innerHTML=datos.map(d=>`<tr><td>${esc(d.fecha)}</td><td>${esc(d.estudiante)}</td><td><span class="pill">${esc(d.curso)}</span></td><td>${esc(estados[d.estado]||d.estado)}</td></tr>`).join("") || `<tr><td colspan="4" class="muted">No hay asistencias registradas en este periodo.</td></tr>`;
+    $("#filasInforme").innerHTML=datos.map(d=>`<tr><td>${esc(d.fecha)}</td><td>${esc(d.estudiante)}</td><td><span class="pill">${esc(d.curso)}</span></td><td>${esc(estados[d.estado]||d.estado)}</td><td>${esc(novedades[d.novedad]||"—")}</td></tr>`).join("") || `<tr><td colspan="5" class="muted">No hay registros para el periodo seleccionado.</td></tr>`;
     mostrar("#mensajeInforme",datos.length?"Informe actualizado.":"No hay registros para el periodo seleccionado.");
   }
 
   function descargarInforme() {
     if(!informeDatos.length) return mostrar("#mensajeInforme","Primero genere un informe con registros para descargar.",true);
-    const filas=informeDatos.map(r=>`<tr><td>${esc(r.fecha)}</td><td>${esc(r.estudiante)}</td><td>${esc(r.curso)}</td><td>${esc(estados[r.estado]||r.estado)}</td></tr>`).join("");
+    const filas=informeDatos.map(r=>`<tr><td>${esc(r.fecha)}</td><td>${esc(r.estudiante)}</td><td>${esc(r.curso)}</td><td>${esc(estados[r.estado]||r.estado)}</td><td>${esc(novedades[r.novedad]||"—")}</td></tr>`).join("");
     const curso=cursos.find(c=>c.id===$("#cursoInforme").value);
-    const contenido=`<!doctype html><html><head><meta charset="utf-8"><style>table{border-collapse:collapse;font-family:Arial}th{background:#6d2436;color:#fff}th,td{border:1px solid #c9c9c9;padding:8px;text-align:left}h1{color:#6d2436}</style></head><body><h1>Informe de asistencias</h1><p>Curso: ${esc(curso?nombreCurso(curso):"")}<br>Periodo: ${esc($("#desdeInforme").value)} a ${esc($("#hastaInforme").value)}</p><table><thead><tr><th>Fecha</th><th>Estudiante</th><th>Curso</th><th>Estado</th></tr></thead><tbody>${filas}</tbody></table></body></html>`;
+    const contenido=`<!doctype html><html><head><meta charset="utf-8"><style>table{border-collapse:collapse;font-family:Arial}th{background:#6d2436;color:#fff}th,td{border:1px solid #c9c9c9;padding:8px;text-align:left}h1{color:#6d2436}</style></head><body><h1>Informe de asistencias</h1><p>Curso: ${esc(curso?nombreCurso(curso):"")}<br>Periodo: ${esc($("#desdeInforme").value)} a ${esc($("#hastaInforme").value)}</p><table><thead><tr><th>Fecha</th><th>Estudiante</th><th>Curso</th><th>Estado</th><th>Novedad</th></tr></thead><tbody>${filas}</tbody></table></body></html>`;
     const blob=new Blob(["\ufeff"+contenido],{type:"application/vnd.ms-excel;charset=utf-8"}), enlace=URL.createObjectURL(blob), a=document.createElement("a"); a.href=enlace; a.download=`informe-asistencia-${$("#desdeInforme").value}-a-${$("#hastaInforme").value}.xls`; a.click(); setTimeout(()=>URL.revokeObjectURL(enlace),1000);
   }
 
@@ -280,7 +299,7 @@
 
   $("#guardar").onclick=async()=>{
     const boton=$("#guardar"); boton.disabled=true; mostrar("#mensaje","Guardando…");
-    const filas=estudiantes.map(e=>({estudiante_id:e.id,curso_id:e.curso_id,fecha:$("#fecha").value,estado:asistencia.get(e.id)||"presente",registrado_por:perfil.id}));
+    const filas=estudiantes.map(e=>{ const estado=asistencia.get(e.id)||"presente"; return {estudiante_id:e.id,curso_id:e.curso_id,fecha:$("#fecha").value,estado,novedad:estado==="no_asiste"?(novedadesAsistencia.get(e.id)||"pendiente_justificar"):null,registrado_por:perfil.id}; });
     const { error }=await db.from("asistencias").upsert(filas,{onConflict:"estudiante_id,fecha"});
     boton.disabled=false; if(error)return mostrar("#mensaje",`No se pudo guardar: ${error.message}`,true); mostrar("#mensaje","Asistencia guardada correctamente.");
   };
