@@ -1,8 +1,5 @@
--- CharryComunica: estados y novedades de asistencia.
--- Puede ejecutarlo aunque el intento anterior haya mostrado un error.
-
--- El campo estado usa este tipo enumerado en la base de datos.
-alter type public.estado_asistencia add value if not exists 'no_asiste';
+-- CharryComunica: columna de novedades y controles de asistencia.
+-- Ejecute este archivo DESPUÉS de habilitar el valor no_asiste en el enum.
 
 alter table public.asistencias
   add column if not exists novedad text;
