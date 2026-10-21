@@ -6,7 +6,7 @@
   const $ = s => document.querySelector(s);
   const estados = { presente: "Presente", no_asiste: "No asiste", tarde: "Tarde", evasion: "Evasión" };
   const novedades = { excusa_medica: "Excusa médica", excusa_personal: "Excusa personal", pendiente_justificar: "Pendiente de justificar" };
-  let perfil = null, cursos = [], estudiantes = [], asistencia = new Map(), novedadesAsistencia = new Map(), informeDatos = [], observaciones = [];
+  let perfil = null, cursos = [], estudiantes = [], asistencia = new Map(), novedadesAsistencia = new Map(), informeDatos = [], observaciones = [], docentesUsuarios = [];
 
   const fechaLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
   const nombreCurso = c => `${c.grado}${c.grupo}`;
@@ -53,7 +53,9 @@
     if (error || !data?.activo) { await db.auth.signOut(); return mostrar("#loginMensaje", "La cuenta no tiene un perfil activo autorizado.", true); }
     perfil=data; const nombre=`${data.nombres} ${data.apellidos}`.trim();
     $("#nombrePerfil").textContent=nombre; $("#rolPerfil").textContent=data.rol; $("#avatar").textContent=iniciales(nombre); $("#saludo").textContent=`Bienvenido, ${data.nombres}`;
-    if ($("#crearDocentes")) $("#crearDocentes").hidden=!["administrador","rectoria"].includes(data.rol);
+    const puedeGestionarDocentes=["administrador","rectoria"].includes(data.rol);
+    if ($("#crearDocentes")) $("#crearDocentes").hidden=!puedeGestionarDocentes;
+    if ($("#navDocentes")) $("#navDocentes").hidden=!puedeGestionarDocentes;
     $("#login").hidden=true; $("#app").hidden=false;
     await cargarCursos();
   }
@@ -297,6 +299,83 @@
   if($("#nuevoEstudiante")) $("#nuevoEstudiante").onclick=()=>abrirEstudiante(); if($("#cerrarEstudiante")) $("#cerrarEstudiante").onclick=cerrarEstudiante; if($("#cancelarEstudiante")) $("#cancelarEstudiante").onclick=cerrarEstudiante; if($("#buscarEstudiante")) $("#buscarEstudiante").oninput=renderEstudiantes;
   if($("#cursoEstudiantes")) $("#cursoEstudiantes").onchange=()=>{$("#curso").value=$("#cursoEstudiantes").value;cargarEstudiantes();};
 
+  const etiquetaRol = rol => ({administrador:"Administración",rectoria:"Rectoría",coordinador:"Coordinación",docente:"Docente"})[rol] || rol || "Docente";
+  const etiquetaJornada = jornada => ({mañana:"Mañana",tarde:"Tarde",ambas:"Ambas jornadas",fin_de_semana:"Fin de semana"})[jornada] || jornada || "Sin asignar";
+
+  async function invocarGestionDocentes(body) {
+    const { data, error } = await db.functions.invoke("gestionar-docentes", { body });
+    if (!error) return { data, error: null };
+    let detalle=error.message;
+    try { const respuesta=error.context; if(respuesta) { const cuerpo=await respuesta.clone().json(); detalle=cuerpo?.error||cuerpo?.message||detalle; } } catch (_) { /* Conserva el error original. */ }
+    return { data: null, error: new Error(detalle) };
+  }
+
+  function renderCursosDocente(asignados=[]) {
+    const contenedor=$("#docenteCursos"); if(!contenedor) return;
+    const seleccionados=new Set(asignados);
+    contenedor.innerHTML=cursos.map(c=>`<label class="curso-check"><input type="checkbox" value="${c.id}" ${seleccionados.has(c.id)?"checked":""}> ${esc(nombreCurso(c))} <small>${esc(etiquetaJornada(c.jornada))}</small></label>`).join("") || "<p class=\"muted\">No hay cursos activos disponibles.</p>";
+  }
+
+  function renderDocentes() {
+    if (!$("#filasDocentes")) return;
+    const q=$("#buscarDocente")?.value.trim().toLocaleLowerCase("es") || "";
+    const lista=docentesUsuarios.filter(d=>`${d.nombres||""} ${d.apellidos||""} ${d.usuario||""} ${d.correo||""}`.toLocaleLowerCase("es").includes(q));
+    $("#filasDocentes").innerHTML=lista.map(d=>{
+      const nombre=`${d.apellidos||""} ${d.nombres||""}`.trim() || d.usuario || "Sin nombre";
+      const cursosAsignados=(d.cursos||[]).map(id=>cursos.find(c=>c.id===id)).filter(Boolean).map(nombreCurso);
+      const descripcionCursos=cursosAsignados.length?cursosAsignados.map(esc).join(", "):`<span class="muted">Por jornada y nivel</span>`;
+      return `<tr><td><div class="persona"><span class="inicial">${iniciales(nombre)}</span><strong>${esc(nombre)}</strong></div><small class="muted">${esc(d.area||d.cargo||"")}</small></td><td>${esc(d.correo||`${d.usuario||""}@colegiocharry.edu.co`)}</td><td>${esc(etiquetaJornada(d.acceso_jornada||d.jornada_origen))}<br><small class="muted">${esc(d.nivel_ensenanza||"Global")}</small></td><td>${descripcionCursos}</td><td><span class="pill">${esc(etiquetaRol(d.rol))}</span></td><td><span class="estado-cuenta ${d.activo===false?"inactiva":""}">${d.activo===false?"Inactiva":"Activa"}</span></td><td><button class="accion editar-docente" data-id="${d.id}">Editar</button></td></tr>`;
+    }).join("") || `<tr><td colspan="7" class="muted">No hay docentes registrados todavía.</td></tr>`;
+    document.querySelectorAll(".editar-docente").forEach(b=>b.onclick=()=>abrirDocente(b.dataset.id));
+  }
+
+  async function cargarDocentes() {
+    if (!$("#filasDocentes")) return;
+    mostrar("#mensajeDocentes","Cargando docentes…");
+    const {data,error}=await invocarGestionDocentes({action:"listar"});
+    if(error) return mostrar("#mensajeDocentes",`No se pudieron cargar los docentes: ${error.message}`,true);
+    docentesUsuarios=data?.docentes||[]; renderDocentes();
+    mostrar("#mensajeDocentes",docentesUsuarios.length?"Seleccione Editar para actualizar jornadas, cursos o permisos.":"Aún no hay docentes registrados.");
+  }
+
+  function abrirDocente(id="") {
+    const d=docentesUsuarios.find(x=>x.id===id);
+    $("#formDocente").reset();
+    $("#docenteId").value=d?.id||""; $("#docenteUsuarioId").value=d?.usuario_id||"";
+    $("#docenteNombres").value=d?.nombres||""; $("#docenteApellidos").value=d?.apellidos||""; $("#docenteUsuario").value=d?.usuario||"";
+    $("#docenteRol").value=d?.rol||"docente"; $("#docenteJornada").value=d?.acceso_jornada||d?.jornada_origen||"mañana";
+    $("#docenteNivel").value=d?.nivel_ensenanza||"Global"; $("#docenteCargo").value=d?.cargo||"Docente"; $("#docenteArea").value=d?.area||""; $("#docenteActivo").checked=d?.activo!==false;
+    $("#tituloDocente").textContent=d?"Editar docente":"Añadir docente";
+    $("#campoContrasenaDocente").hidden=Boolean(d?.usuario_id);
+    $("#docenteContrasena").required=!d?.usuario_id;
+    renderCursosDocente(d?.cursos||[]); $("#mensajeFormularioDocente").textContent=""; $("#modalDocente").hidden=false;
+  }
+
+  function cerrarDocente() { if(!$("#modalDocente")) return; $("#modalDocente").hidden=true; $("#formDocente").reset(); }
+
+  const formularioDocente=$("#formDocente");
+  if(formularioDocente) formularioDocente.onsubmit=async ev=>{
+    ev.preventDefault();
+    const id=$("#docenteId").value, usuarioId=$("#docenteUsuarioId").value;
+    const cursosAsignados=[...document.querySelectorAll("#docenteCursos input:checked")].map(x=>x.value);
+    const datos={ action:"guardar", id:id||null, usuario_id:usuarioId||null,
+      nombres:$("#docenteNombres").value.trim(), apellidos:$("#docenteApellidos").value.trim(), usuario:$("#docenteUsuario").value.trim().toLocaleLowerCase("es"),
+      rol:$("#docenteRol").value, acceso_jornada:$("#docenteJornada").value, nivel_ensenanza:$("#docenteNivel").value,
+      cargo:$("#docenteCargo").value.trim()||"Docente", area:$("#docenteArea").value.trim()||null, activo:$("#docenteActivo").checked,
+      cursos:cursosAsignados, contrasena:$("#docenteContrasena").value || null };
+    if(!usuarioId && datos.contrasena.length<8) return mostrar("#mensajeFormularioDocente","Defina una contraseña inicial de al menos 8 caracteres.",true);
+    const boton=$("#guardarDocente"); boton.disabled=true; boton.textContent="Guardando…";
+    const {data,error}=await invocarGestionDocentes(datos);
+    boton.disabled=false; boton.textContent="Guardar docente";
+    if(error) return mostrar("#mensajeFormularioDocente",`No se pudo guardar: ${error.message}`,true);
+    cerrarDocente(); await cargarDocentes(); mostrar("#mensajeDocentes",data?.mensaje||"Docente actualizado correctamente.");
+  };
+
+  if($("#nuevoDocente")) $("#nuevoDocente").onclick=()=>abrirDocente();
+  if($("#cerrarDocente")) $("#cerrarDocente").onclick=cerrarDocente;
+  if($("#cancelarDocente")) $("#cancelarDocente").onclick=cerrarDocente;
+  if($("#buscarDocente")) $("#buscarDocente").oninput=renderDocentes;
+
   $("#guardar").onclick=async()=>{
     const boton=$("#guardar"); boton.disabled=true; mostrar("#mensaje","Guardando…");
     const filas=estudiantes.map(e=>{ const estado=asistencia.get(e.id)||"presente"; return {estudiante_id:e.id,curso_id:e.curso_id,fecha:$("#fecha").value,estado,novedad:estado==="no_asiste"?(novedadesAsistencia.get(e.id)||"pendiente_justificar"):null,registrado_por:perfil.id}; });
@@ -336,6 +415,6 @@
     if(error) return alert(`No fue posible cambiar la contraseña: ${error.message}`);
     alert("Contraseña actualizada correctamente.");
   };
-  document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{const vista=$("#"+b.dataset.view); if(!vista)return; document.querySelectorAll("nav button").forEach(x=>x.classList.remove("activo"));document.querySelectorAll(".vista").forEach(x=>x.classList.remove("activa"));b.classList.add("activo");vista.classList.add("activa");$("#titulo").textContent=({asistencia:"Control de asistencia",estadisticas:"Estadísticas",estudiantes:"Gestión de estudiantes",observador:"Observador del estudiante"})[b.dataset.view]; if(b.dataset.view==="estadisticas" && $("#cursoInforme")) cargarInforme(); if(b.dataset.view==="observador") cargarObservador();});
+  document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{const vista=$("#"+b.dataset.view); if(!vista)return; document.querySelectorAll("nav button").forEach(x=>x.classList.remove("activo"));document.querySelectorAll(".vista").forEach(x=>x.classList.remove("activa"));b.classList.add("activo");vista.classList.add("activa");$("#titulo").textContent=({asistencia:"Control de asistencia",estadisticas:"Estadísticas",estudiantes:"Gestión de estudiantes",observador:"Observador del estudiante",docentes:"Gestión de docentes"})[b.dataset.view]; if(b.dataset.view==="estadisticas" && $("#cursoInforme")) cargarInforme(); if(b.dataset.view==="observador") cargarObservador(); if(b.dataset.view==="docentes") cargarDocentes();});
   iniciar();
 })();

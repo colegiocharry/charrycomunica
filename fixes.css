@@ -36,6 +36,17 @@
 .estado.sel[data-estado="no_asiste"] { background:var(--rojo); }
 .estado.sel[data-estado="evasion"] { background:#76476f; }
 
+/* Administración de docentes y permisos */
+.modal-docente { max-width:760px; }
+.modal-docente label small { display:block; margin-top:4px; color:var(--muted); font-weight:400; }
+.cursos-docente { margin:4px 0 12px; }
+.lista-cursos { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; max-height:190px; overflow:auto; padding:3px; }
+.curso-check { display:flex; align-items:center; gap:5px; padding:8px 9px; border:1px solid #e4d8d2; border-radius:8px; font-size:.9rem; font-weight:600; color:var(--texto); }
+.curso-check input { width:auto; margin:0; }
+.curso-check small { color:var(--muted); font-weight:400; }
+.estado-cuenta { color:var(--verde); font-weight:700; white-space:nowrap; }
+.estado-cuenta.inactiva { color:var(--rojo); }
+
 /* Ajustes para teléfonos: navegación compacta, controles táctiles y sin desborde lateral. */
 @media (max-width: 600px) {
   body { overflow-x:hidden; }
@@ -90,4 +101,7 @@
   .modal-actions { flex-direction:column-reverse; }
   .modal-actions button { width:100%; min-height:44px; }
   .form-dos-columnas { grid-template-columns:1fr; gap:10px; }
+  .lista-cursos { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+
+@media(max-width:420px) { .lista-cursos { grid-template-columns:1fr; } }

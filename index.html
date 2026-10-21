@@ -25,7 +25,7 @@
   <div class="app" id="app" hidden>
     <aside>
       <div class="brand"><img src="assets/logo.png" alt="Escudo del Colegio Charry IED"><div><strong>CharryComunica</strong><small>Colegio Charry IED</small></div></div>
-      <nav><button class="activo" data-view="asistencia">✓ <span>Asistencia</span></button><button data-view="estadisticas">▥ <span>Estadísticas</span></button><button data-view="estudiantes">♙ <span>Estudiantes</span></button><button data-view="observador">▤ <span>Observador</span></button></nav>
+      <nav><button class="activo" data-view="asistencia">✓ <span>Asistencia</span></button><button data-view="estadisticas">▥ <span>Estadísticas</span></button><button data-view="estudiantes">♙ <span>Estudiantes</span></button><button data-view="observador">▤ <span>Observador</span></button><button id="navDocentes" data-view="docentes" hidden>♧ <span>Docentes</span></button></nav>
       <div class="perfil"><div class="avatar" id="avatar">CC</div><div><strong id="nombrePerfil">Usuario</strong><small id="rolPerfil"></small></div></div>
       <button class="secundario" id="crearDocentes" hidden>Crear cuentas docentes</button>
       <button class="salir" id="cambiarContrasena">Cambiar contraseña</button>
@@ -102,11 +102,36 @@
           </form>
         </div>
       </section>
+      <section id="docentes" class="vista">
+        <article class="panel">
+          <div class="panel-head">
+            <div><h2>Gestión de docentes y privilegios</h2><p class="muted">Cree y administre cuentas, jornadas, cursos y permisos de la plataforma.</p></div>
+            <div class="tools"><input id="buscarDocente" placeholder="Buscar docente o usuario"><button class="primary" id="nuevoDocente">+ Añadir docente</button></div>
+          </div>
+          <p class="mensaje" id="mensajeDocentes"></p>
+          <div class="tabla"><table><thead><tr><th>Docente</th><th>Usuario</th><th>Jornada</th><th>Cursos asignados</th><th>Permiso</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="filasDocentes"></tbody></table></div>
+        </article>
+        <div class="modal" id="modalDocente" hidden>
+          <form class="modal-card modal-amplio modal-docente" id="formDocente">
+            <div class="modal-head"><div><p class="eyebrow">Administración · CharryComunica</p><h2 id="tituloDocente">Añadir docente</h2></div><button type="button" class="cerrar" id="cerrarDocente" aria-label="Cerrar">×</button></div>
+            <input type="hidden" id="docenteId"><input type="hidden" id="docenteUsuarioId">
+            <div class="form-dos-columnas"><label>Nombres<input id="docenteNombres" maxlength="100" required></label><label>Apellidos<input id="docenteApellidos" maxlength="100" required></label></div>
+            <div class="form-dos-columnas"><label>Usuario institucional<input id="docenteUsuario" maxlength="64" autocomplete="off" placeholder="Ej.: mgarcia" required><small>Se creará como usuario@colegiocharry.edu.co</small></label><label id="campoContrasenaDocente">Contraseña inicial<input id="docenteContrasena" type="password" minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres"><small>El docente podrá cambiarla al ingresar.</small></label></div>
+            <div class="form-dos-columnas"><label>Permiso en la plataforma<select id="docenteRol" required><option value="docente">Docente</option><option value="coordinador">Coordinación</option><option value="rectoria">Rectoría</option><option value="administrador">Administración</option></select></label><label>Jornada de acceso<select id="docenteJornada" required><option value="mañana">Mañana</option><option value="tarde">Tarde</option><option value="ambas">Ambas jornadas</option></select></label></div>
+            <div class="form-dos-columnas"><label>Nivel de enseñanza<select id="docenteNivel" required><option value="Global">Todos los niveles</option><option value="Preescolar">Preescolar</option><option value="Básica Primaria">Básica Primaria</option><option value="Básica Secundaria y Media">Básica Secundaria y Media</option></select></label><label>Cargo<input id="docenteCargo" maxlength="120" value="Docente" placeholder="Ej.: Docente de Inglés"></label></div>
+            <label>Área o asignatura<input id="docenteArea" maxlength="120" placeholder="Ej.: Inglés"></label>
+            <fieldset class="datos-acudiente cursos-docente"><legend>Cursos asignados</legend><p class="muted">Si selecciona uno o más cursos, el docente solo verá esos cursos. Sin selección, se aplica la jornada y el nivel indicados.</p><div id="docenteCursos" class="lista-cursos"></div></fieldset>
+            <label class="check"><input type="checkbox" id="docenteActivo" checked> Cuenta activa</label>
+            <div class="modal-actions"><button type="button" class="secundario" id="cancelarDocente">Cancelar</button><button type="submit" class="primary" id="guardarDocente">Guardar docente</button></div>
+            <p class="mensaje" id="mensajeFormularioDocente"></p>
+          </form>
+        </div>
+      </section>
     </main>
   </div>
 
   <script src="vendor/supabase.js"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
