@@ -54,7 +54,6 @@
     perfil=data; const nombre=`${data.nombres} ${data.apellidos}`.trim();
     $("#nombrePerfil").textContent=nombre; $("#rolPerfil").textContent=data.rol; $("#avatar").textContent=iniciales(nombre); $("#saludo").textContent=`Bienvenido, ${data.nombres}`;
     const puedeGestionarDocentes=["administrador","rectoria"].includes(data.rol);
-    if ($("#crearDocentes")) $("#crearDocentes").hidden=!puedeGestionarDocentes;
     if ($("#navDocentes")) $("#navDocentes").hidden=!puedeGestionarDocentes;
     $("#login").hidden=true; $("#app").hidden=false;
     await cargarCursos();
@@ -385,24 +384,6 @@
   $("#curso").onchange=cargarEstudiantes; $("#fecha").onchange=cargarAsistencia; $("#buscar").oninput=render;
   if($("#generarInforme")) $("#generarInforme").onclick=cargarInforme;
   if($("#descargarInforme")) $("#descargarInforme").onclick=descargarInforme;
-  if($("#crearDocentes")) $("#crearDocentes").onclick=async()=>{
-    if(!confirm("Se crearán las cuentas pendientes de los docentes. ¿Desea continuar?")) return;
-    const boton=$("#crearDocentes"); boton.disabled=true; boton.textContent="Creando cuentas…";
-    const {data,error}=await db.functions.invoke("crear-docentes");
-    boton.disabled=false; boton.textContent="Crear cuentas docentes";
-    if(error) {
-      let detalle=error.message;
-      try {
-        const respuesta=error.context;
-        if(respuesta) {
-          const cuerpo=await respuesta.clone().json();
-          detalle=cuerpo?.error||cuerpo?.message||detalle;
-        }
-      } catch (_) { /* Se conserva el mensaje original si no llega JSON. */ }
-      return alert(`No fue posible crear las cuentas: ${detalle}`);
-    }
-    alert(`${data?.mensaje||"Proceso finalizado."}\nCuentas omitidas: ${data?.omitidos||0}${data?.errores?.length?`\nErrores: ${data.errores.length}`:""}`);
-  };
   $("#salir").onclick=()=>db.auth.signOut();
   if($("#cambiarContrasena")) $("#cambiarContrasena").onclick=async()=>{
     const nueva=prompt("Escriba una nueva contraseña (mínimo 8 caracteres):");
