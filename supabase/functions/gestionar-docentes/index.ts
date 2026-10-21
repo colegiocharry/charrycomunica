@@ -117,6 +117,18 @@ export default {
       docenteId = data.id;
     }
 
+    // Se consulta de nuevo el identificador real del registro. Así se evita
+    // asociar cursos a un identificador de perfil o de autenticación.
+    const { data: docenteGuardado, error: errorDocenteGuardado } = await ctx.supabaseAdmin
+      .from("docentes")
+      .select("id")
+      .eq("usuario_id", usuarioId)
+      .maybeSingle();
+    if (errorDocenteGuardado || !docenteGuardado?.id) {
+      return respuesta({ error: `No se pudo confirmar el registro docente: ${errorDocenteGuardado?.message ?? "no encontrado"}` }, 500);
+    }
+    docenteId = docenteGuardado.id;
+
     const { error: errorEliminarAsignaciones } = await ctx.supabaseAdmin.from("docentes_cursos").delete().eq("docente_id", docenteId);
     if (errorEliminarAsignaciones) return respuesta({ error: `No se pudieron actualizar los cursos: ${errorEliminarAsignaciones.message}` }, 500);
     if (cursos.length) {
